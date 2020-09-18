@@ -38,6 +38,8 @@ left_join..default <- function(x, y, by = NULL) {
   names(on_vec) <- by_y
   on_vec[on_vec == ""] <- names(on_vec)[on_vec == ""]
 
+  join_message(on_vec, by)
+
   # Get y names
   y_names <- names(y)
   y_names <- y_names[!y_names %in% names(x)] # Names not in x
@@ -72,6 +74,8 @@ inner_join..default <- function(x, y, by = NULL) {
   on_vec <- by_y
   names(on_vec) <- by_x
 
+  join_message(on_vec, by)
+
   as_tidytable(x[y, on = on_vec, allow.cartesian = TRUE, nomatch = 0])
 }
 
@@ -94,6 +98,8 @@ right_join..default <- function(x, y, by = NULL) {
 
   on_vec <- by_y
   names(on_vec) <- by_x
+
+  join_message(on_vec, by)
 
   as_tidytable(x[y, on = on_vec, allow.cartesian = TRUE])
 }
@@ -140,6 +146,8 @@ anti_join..default <- function(x, y, by = NULL) {
   on_vec <- by_y
   names(on_vec) <- by_x
 
+  join_message(on_vec, by)
+
   as_tidytable(x[!y, on = on_vec, allow.cartesian = TRUE])
 }
 
@@ -163,6 +171,8 @@ semi_join..default <- function(x, y, by = NULL) {
   on_vec <- by_y
   names(on_vec) <- by_x
 
+  join_message(on_vec, by)
+
   result_df <- fsetdiff(x, x[!y, on = on_vec], all=TRUE)
 
   as_tidytable(result_df)
@@ -174,6 +184,9 @@ get_bys <- function(x, y, by = NULL) {
 
   if (is.null(by)) {
     by_x <- by_y <- intersect(names_x, names_y)
+
+    if (length(by_x) == 0)
+      abort("`by` must be supplied when `x` and `y` have no common variables.")
   } else {
     by_x <- names(by)
     by_y <- unname(by)
@@ -243,6 +256,8 @@ join_mold <- function(x, y, by = NULL, suffix = c(".x", ".y"), all_x, all_y) {
   by_x <- by_x_y[[1]]
   by_y <- by_x_y[[2]]
 
+  join_message(by_x, by)
+
   result_df <- as_tidytable(
     merge(x = x, y = y, by.x = by_x, by.y = by_y, suffixes = suffix,
           all.x = all_x, all.y = all_y,
@@ -252,4 +267,19 @@ join_mold <- function(x, y, by = NULL, suffix = c(".x", ".y"), all_x, all_y) {
   setkey(result_df, NULL)
 
   result_df
+}
+
+join_message <- function(on_vec, by) {
+
+  if (is.null(by)) {
+    by_cols_quoted <- encodeString(on_vec, quote = '"')
+
+    by_cols_message <- paste0(by_cols_quoted, collapse = ", ")
+
+    if (length(on_vec) > 1) {
+      inform(glue("Joining, by = c({by_cols_message})"))
+    } else {
+      inform(glue("Joining, by = {by_cols_message}"))
+    }
+  }
 }
